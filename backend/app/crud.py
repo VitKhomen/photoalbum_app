@@ -71,6 +71,16 @@ async def count_photos(session: AsyncSession, album_id: int) -> int:
     return await session.scalar(stmt) or 0
 
 
+# скалярні колонки Album - для точкового refresh(), щоб НЕ чіпати
+# relationship-атрибути (photos, cover_photo), інакше вони "звільняються"
+# (expire) і наступний доступ до них під час серіалізації відповіді
+# провокує lazy-load поза async-контекстом -> MissingGreenlet
+_ALBUM_SCALAR_ATTRS = [
+    "id", "title", "slug", "description", "order",
+    "cover_photo_id", "created_at", "updated_at",
+]
+
+
 async def create_album(
     session: AsyncSession,
     data: schemas.AlbumCreate,
@@ -87,7 +97,7 @@ async def create_album(
     )
     session.add(album)
     await session.commit()
-    await session.refresh(album)
+    await session.refresh(album, attribute_names=_ALBUM_SCALAR_ATTRS)
     return album
 
 
@@ -120,12 +130,12 @@ async def update_album(
             album.cover_photo_id = photo.id
 
     await session.commit()
-    await session.refresh(album)
+    await session.refresh(album, attribute_names=_ALBUM_SCALAR_ATTRS)
     return album
 
 
 async def delete_album(session: AsyncSession, album: models.Album) -> None:
-    session.delete(album)
+    await session.delete(album)
     await session.commit()
 
 
@@ -176,7 +186,7 @@ async def create_photo(
 async def delete_photo(session: AsyncSession, photo: models.Photo) -> None:
     album_id = photo.album_id
 
-    album = await session.get(models.Album, album_id)
+    album = await session.get(session, album_id)
     was_cover = album is not None and album.cover_photo_id == photo.id
 
     if was_cover and album is not None:
