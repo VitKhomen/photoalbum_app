@@ -21,7 +21,7 @@ async def generate_unique_slug(session: AsyncSession, title: str, album_id: int 
 
         exists = await session.scalar(stmt)
 
-        if not exists:
+        if exists is None:
             return slug
 
         counter += 1
@@ -185,18 +185,20 @@ async def create_photo(
 
 async def delete_photo(session: AsyncSession, photo: models.Photo) -> None:
     album_id = photo.album_id
+    file_key = photo.file_key
+    photo_id = photo.id
 
-    album = await session.get(session, album_id)
-    was_cover = album is not None and album.cover_photo_id == photo.id
+    album = await session.get(models.Album, album_id)
+    was_cover = album is not None and album.cover_photo_id == photo_id
 
     if was_cover and album is not None:
         album.cover_photo_id = None
-        await session.flush()  # щоб FK не блокував delete
+        await session.flush()
 
     await session.delete(photo)
     await session.commit()
 
-    if was_cover and album is not None:
+    if was_cover:
         stmt = (
             select(models.Photo)
             .where(models.Photo.album_id == album_id)
@@ -205,8 +207,15 @@ async def delete_photo(session: AsyncSession, photo: models.Photo) -> None:
         )
         new_cover = await session.scalar(stmt)
         if new_cover is not None:
-            album.cover_photo_id = new_cover.id
-            await session.commit()
+            # беремо album заново після commit — безпечніше
+            album = await session.get(models.Album, album_id)
+            if album is not None:
+                album.cover_photo_id = new_cover.id
+                await session.commit()
+
+    if file_key:
+        from app.storage import delete_object
+        await delete_object(file_key)
 
 
 async def reorder_photos(

@@ -1,0 +1,97 @@
+/* =========================================================
+   Токени дизайну - фотоальбом
+   Світла тема: тепла піщана
+   Темна тема:  глибока фіолетова (баклажанова)
+   Акцент: приглушений зелений (шкіра старого альбому)
+   ========================================================= */
+
+:root {
+  --bg: #e8e1ce;
+  --surface: #f1ebdc;
+  --ink: #2a241c;
+  --ink-soft: #746b57;
+  --line: #d6cbae;
+  --accent: #35433b;
+  --accent-soft: #5c6e62;
+  --accent-contrast: #f1ebdc;
+  --scrim: rgba(15, 14, 12, 0.92);
+  --shadow: 0 8px 30px rgba(42, 36, 28, 0.15);
+
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --section-desktop-h: 64vh;
+  --transition-fast: 160ms ease;
+  --transition-slide: 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --bg: #18121f;
+  --surface: #221a2c;
+  --ink: #ede6f2;
+  --ink-soft: #a496b0;
+  --line: #3a2f47;
+  --accent: #8fa795;
+  --accent-soft: #6f8577;
+  --accent-contrast: #18121f;
+  --scrim: rgba(0, 0, 0, 0.94);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-slide: 0ms;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

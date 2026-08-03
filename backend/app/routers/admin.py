@@ -111,7 +111,6 @@ async def delete_photo(
     db: SessionDep,
     _admin: str = Depends(get_current_admin),
 ):
-    photo = await crud.get_photo(db, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="Фото не знайдено")
 
