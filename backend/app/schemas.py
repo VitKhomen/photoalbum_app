@@ -12,6 +12,7 @@ class PhotoOut(BaseModel):
     id: int
     album_id: int
     url: str
+    media_type: str = "image"
     width: Optional[int] = None
     height: Optional[int] = None
     order: int

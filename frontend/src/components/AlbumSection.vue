@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 const props = defineProps({
   album: { type: Object, required: true },
@@ -7,12 +7,26 @@ const props = defineProps({
 
 const emit = defineEmits(["open-lightbox"]);
 
-const currentIndex = ref(0);
-
 const photos = computed(() => props.album.photos || []);
-const currentPhoto = computed(() => photos.value[currentIndex.value]);
 const total = computed(() => photos.value.length);
 
+function indexOfCover() {
+  const coverId = props.album.cover_photo?.id ?? props.album.cover_photo_id;
+  if (!coverId) return 0;
+  const i = photos.value.findIndex((p) => p.id === coverId);
+  return i >= 0 ? i : 0;
+}
+
+const currentIndex = ref(indexOfCover());
+
+watch(
+  () => [props.album.cover_photo?.id, props.album.cover_photo_id, photos.value.length],
+  () => {
+    currentIndex.value = indexOfCover();
+  }
+);
+
+const currentPhoto = computed(() => photos.value[currentIndex.value]);
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -92,9 +106,22 @@ function onTouchEnd(e) {
         v-if="currentPhoto"
         class="album__photo-wrap"
         @click="openLightbox"
-        :aria-label="`Відкрити на весь екран: ${album.title}, фото ${currentIndex + 1}`"
+        :aria-label="`Відкрити на весь екран: ${album.title}, ${currentIndex + 1}`"
       >
+        <video
+          v-if="currentPhoto.media_type === 'video'"
+          :src="currentPhoto.url"
+          :style="currentPhoto.width && currentPhoto.height
+            ? { aspectRatio: `${currentPhoto.width} / ${currentPhoto.height}` }
+            : {}"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+        />
         <img
+          v-else
           :src="currentPhoto.url"
           :alt="album.title"
           :style="currentPhoto.width && currentPhoto.height
@@ -188,7 +215,8 @@ function onTouchEnd(e) {
   display: flex;
 }
 
-.album__photo-wrap img {
+.album__photo-wrap img,
+.album__photo-wrap video {
   max-width: 100%;
   max-height: calc(var(--section-desktop-h) - 4rem);
   width: auto;

@@ -11,7 +11,10 @@ from app.storage import build_object_key, upload_fileobj, delete_object
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_VIDEO_TYPES = {"video/mp4",
+                       "video/quicktime", "video/webm", "video/x-m4v"}
+ALLOWED_CONTENT_TYPES = ALLOWED_IMAGE_TYPES | ALLOWED_VIDEO_TYPES
 
 
 # --------- Auth ---------
@@ -82,25 +85,38 @@ async def upload_photo(
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Дозволені лише зображення: jpeg, png, webp, gif",
+            detail="Дозволені лише зображення (jpeg, png, webp, gif) "
+                   "або відео (mp4, mov, webm)",
         )
+
+    is_video = file.content_type in ALLOWED_VIDEO_TYPES
+    media_type = "video" if is_video else "image"
 
     raw_bytes = await file.read()
 
-    # дізнаємось розміри зображення (потрібно фронтенду для верстки без "стрибків")
+    # дізнаємось розміри - тільки для зображень (Pillow не вміє читати відео;
+    # для відео залишаємо width/height порожніми, фронт підставить свій fallback)
     width, height = None, None
-    try:
-        with Image.open(io.BytesIO(raw_bytes)) as img:
-            width, height = img.size
-    except Exception:
-        pass
+    if not is_video:
+        try:
+            with Image.open(io.BytesIO(raw_bytes)) as img:
+                width, height = img.size
+        except Exception:
+            pass
 
     key = build_object_key(album.slug, file.filename or "photo")
-    url = await upload_fileobj(io.BytesIO(raw_bytes), key,
-                               content_type=file.content_type)
+    try:
+        url = await upload_fileobj(io.BytesIO(raw_bytes), key,
+                                   content_type=file.content_type)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Не вдалося завантажити файл у сховище (R2): {e}",
+        )
 
     photo = await crud.create_photo(
-        db, album_id=album.id, file_key=key, url=url, width=width, height=height
+        db, album_id=album.id, file_key=key, url=url,
+        width=width, height=height, media_type=media_type,
     )
     return photo
 
@@ -111,10 +127,10 @@ async def delete_photo(
     db: SessionDep,
     _admin: str = Depends(get_current_admin),
 ):
+    photo = await crud.get_photo(db, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="Фото не знайдено")
 
-    await delete_object(photo.file_key)
     await crud.delete_photo(db, photo)
 
 

@@ -9,7 +9,7 @@ const albums = ref([]);
 const isLoading = ref(true);
 const error = ref(null);
 
-const theme = ref(document.documentElement.getAttribute("data-theme") || "light");
+const theme = ref(document.documentElement.getAttribute("data-theme") || "dark");
 
 function toggleTheme() {
   theme.value = theme.value === "dark" ? "light" : "dark";

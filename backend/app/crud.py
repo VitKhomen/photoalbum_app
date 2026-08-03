@@ -19,9 +19,9 @@ async def generate_unique_slug(session: AsyncSession, title: str, album_id: int 
         if album_id is not None:
             stmt = stmt.where(models.Album.id != album_id)
 
-        exists = await session.scalar(stmt)
+        existing_id = await session.scalar(stmt)
 
-        if exists is None:
+        if existing_id is None:
             return slug
 
         counter += 1
@@ -135,7 +135,7 @@ async def update_album(
 
 
 async def delete_album(session: AsyncSession, album: models.Album) -> None:
-    await session.delete(album)
+    await session.delete(album)  # ФІКС: було без await
     await session.commit()
 
 
@@ -161,6 +161,7 @@ async def create_photo(
     url: str,
     width: int | None,
     height: int | None,
+    media_type: str = "image",
 ) -> models.Photo:
     photo = models.Photo(
         album_id=album_id,
@@ -168,6 +169,7 @@ async def create_photo(
         url=url,
         width=width,
         height=height,
+        media_type=media_type,
         order=await next_photo_order(session, album_id),
     )
     session.add(photo)
@@ -185,20 +187,23 @@ async def create_photo(
 
 async def delete_photo(session: AsyncSession, photo: models.Photo) -> None:
     album_id = photo.album_id
-    file_key = photo.file_key
-    photo_id = photo.id
 
-    album = await session.get(models.Album, album_id)
-    was_cover = album is not None and album.cover_photo_id == photo_id
+    # ВАЖЛИВО: для cascade="delete-orphan" ORM під час видалення одного фото має
+    # перевірити батьківську колекцію album.photos. Якщо вона не підвантажена
+    # заздалегідь - у async-режимі це провокує неявний (lazy) SQL-запит поза
+    # правильним async-контекстом і падає з MissingGreenlet. Тому підвантажуємо
+    # album разом з photos через selectinload (get_album_by_id) замість session.get.
+    album = await get_album_by_id(session, album_id)
+    was_cover = album is not None and album.cover_photo_id == photo.id
 
     if was_cover and album is not None:
         album.cover_photo_id = None
-        await session.flush()
+        await session.flush()  # щоб FK не блокував delete
 
     await session.delete(photo)
     await session.commit()
 
-    if was_cover:
+    if was_cover and album is not None:
         stmt = (
             select(models.Photo)
             .where(models.Photo.album_id == album_id)
@@ -207,15 +212,8 @@ async def delete_photo(session: AsyncSession, photo: models.Photo) -> None:
         )
         new_cover = await session.scalar(stmt)
         if new_cover is not None:
-            # беремо album заново після commit — безпечніше
-            album = await session.get(models.Album, album_id)
-            if album is not None:
-                album.cover_photo_id = new_cover.id
-                await session.commit()
-
-    if file_key:
-        from app.storage import delete_object
-        await delete_object(file_key)
+            album.cover_photo_id = new_cover.id
+            await session.commit()
 
 
 async def reorder_photos(

@@ -74,6 +74,9 @@ class Photo(Base):
     # публічний URL для показу на сайті (будуємо один раз при завантаженні)
     url: Mapped[str] = mapped_column(String(1000))
 
+    # "image" | "video" - визначається за content_type при завантаженні
+    media_type: Mapped[str] = mapped_column(String(10), default="image")
+
     # опційні
     width: Mapped[Optional[int]] = mapped_column(default=None)
     height: Mapped[Optional[int]] = mapped_column(default=None)

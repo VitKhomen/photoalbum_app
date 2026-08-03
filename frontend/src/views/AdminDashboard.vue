@@ -12,6 +12,7 @@ import {
   deletePhoto,
   reorderPhotos,
 } from "../api.js";
+import ThemeToggle from "../components/ThemeToggle.vue";
 
 const router = useRouter();
 const { logout } = useAuth();
@@ -35,6 +36,10 @@ const isSavingEdit = ref(false);
 const uploadError = ref(null);
 const isUploading = ref(false);
 const fileInput = ref(null);
+
+const theme = ref(
+  document.documentElement.getAttribute("data-theme") || "dark"
+);
 
 async function loadAlbums() {
   isLoadingAlbums.value = true;
@@ -162,6 +167,12 @@ async function movePhoto(photo, direction) {
   await refreshSelected();
 }
 
+function toggleTheme() {
+  theme.value = theme.value === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", theme.value);
+  localStorage.setItem("theme", theme.value);
+}
+
 function handleLogout() {
   logout();
   router.push("/admin/login");
@@ -175,6 +186,7 @@ onMounted(loadAlbums);
     <header class="dashboard__header">
       <h1 class="dashboard__title">Адмінка</h1>
       <button class="btn btn--ghost" @click="handleLogout">Вийти</button>
+      <ThemeToggle :theme="theme" @toggle="toggleTheme" />
     </header>
 
     <div class="dashboard__body">
@@ -241,11 +253,11 @@ onMounted(loadAlbums);
 
           <div class="album-editor__upload">
             <label class="btn">
-              {{ isUploading ? "Завантажуємо..." : "+ Додати фото" }}
+              {{ isUploading ? "Завантажуємо..." : "+ Додати файл" }}
               <input
                 ref="fileInput"
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
                 multiple
                 class="visually-hidden"
                 :disabled="isUploading"
@@ -266,7 +278,21 @@ onMounted(loadAlbums);
               class="photo-card"
               :class="{ 'photo-card--cover': selectedAlbum.cover_photo?.id === photo.id }"
             >
-              <img :src="photo.url" :alt="selectedAlbum.title" loading="lazy" />
+              <video
+                v-if="photo.media_type === 'video'"
+                :src="photo.url"
+                muted
+                playsinline
+                preload="metadata"
+                class="photo-card__media"
+              />
+              <img
+                v-else
+                :src="photo.url"
+                :alt="selectedAlbum.title"
+                loading="lazy"
+                class="photo-card__media"
+              />
 
               <div class="photo-card__actions">
                 <button
@@ -501,10 +527,12 @@ onMounted(loadAlbums);
   border-color: var(--accent);
 }
 
-.photo-card img {
+.photo-card__media {
   width: 100%;
   height: 8rem;
   object-fit: cover;
+  display: block;
+  background: #111;
 }
 
 .photo-card__actions {

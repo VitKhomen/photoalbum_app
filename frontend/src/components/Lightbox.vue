@@ -82,7 +82,20 @@ onBeforeUnmount(() => {
     </button>
 
     <figure class="lightbox__figure" v-if="current">
-      <img :src="current.url" :alt="album.title" />
+      <video
+        v-if="current.media_type === 'video'"
+        :key="current.id"
+        :src="current.url"
+        controls
+        autoplay
+        playsinline
+        preload="metadata"
+      />
+      <img
+        v-else
+        :src="current.url"
+        :alt="album.title"
+      />
       <figcaption class="lightbox__caption">
         <span class="lightbox__title">{{ album.title }}</span>
         <span class="lightbox__counter">{{ pad(index + 1) }} / {{ pad(total) }}</span>
@@ -130,7 +143,8 @@ onBeforeUnmount(() => {
   gap: 0.9rem;
 }
 
-.lightbox__figure img {
+.lightbox__figure img,
+.lightbox__figure video {
   max-width: 100%;
   max-height: 78dvh;
   object-fit: contain;
