@@ -29,6 +29,13 @@ engine = create_async_engine(
     pool_pre_ping=True,  # перевіряє з'єднання перед використанням
     pool_size=10,
     max_overflow=20,
+    connect_args={
+        # Supabase (і будь-який pgbouncer у transaction-режимі) не підтримує
+        # prepared statements, бо з'єднання перевикористовується між запитами
+        # неконтрольовано. asyncpg кешує prepared statements за замовчуванням -
+        # це і призводить до "prepared statement ... does not exist".
+        "statement_cache_size": 0,
+    },
 )
 
 AsyncSessionLocal = async_sessionmaker(

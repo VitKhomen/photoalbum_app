@@ -17,10 +17,13 @@ function pad(n) {
 }
 
 function next() {
-  if (props.index < total.value - 1) emit("update:index", props.index + 1);
+  if (total.value === 0) return;
+  emit("update:index", (props.index + 1) % total.value);
 }
+
 function prev() {
-  if (props.index > 0) emit("update:index", props.index - 1);
+  if (total.value === 0) return;
+  emit("update:index", (props.index - 1 + total.value) % total.value);
 }
 function close() {
   emit("close");

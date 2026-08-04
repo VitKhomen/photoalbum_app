@@ -33,10 +33,13 @@ function pad(n) {
 }
 
 function next() {
-  if (currentIndex.value < total.value - 1) currentIndex.value += 1;
+  if (total.value === 0) return;
+  currentIndex.value = (currentIndex.value + 1) % total.value;
 }
+
 function prev() {
-  if (currentIndex.value > 0) currentIndex.value -= 1;
+  if (total.value === 0) return;
+  currentIndex.value = (currentIndex.value - 1 + total.value) % total.value;
 }
 function goto(i) {
   currentIndex.value = i;
@@ -94,7 +97,6 @@ function onTouchEnd(e) {
         v-if="total > 1"
         class="album__nav album__nav--prev"
         @click="prev"
-        :disabled="currentIndex === 0"
         aria-label="Попереднє фото"
       >
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
@@ -136,7 +138,6 @@ function onTouchEnd(e) {
         v-if="total > 1"
         class="album__nav album__nav--next"
         @click="next"
-        :disabled="currentIndex === total - 1"
         aria-label="Наступне фото"
       >
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
