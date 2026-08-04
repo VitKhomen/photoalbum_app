@@ -14,6 +14,7 @@
   --accent: #35433b;
   --accent-soft: #5c6e62;
   --accent-contrast: #f1ebdc;
+  --ornament: rgba(148, 148, 148, 0.11); /* сріблястий, ледь видно */
   --scrim: rgba(15, 14, 12, 0.92);
   --shadow: 0 8px 30px rgba(42, 36, 28, 0.15);
 
@@ -37,6 +38,7 @@ html[data-theme="dark"] {
   --accent: #8fa795;
   --accent-soft: #6f8577;
   --accent-contrast: #18121f;
+  --ornament: rgba(212, 175, 90, 0.09); /* золотистий, ледь видно */
   --scrim: rgba(0, 0, 0, 0.94);
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
   color-scheme: dark;
@@ -60,15 +62,22 @@ body {
 }
 
 body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-}
-
-#app {
-  min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+        repeating-linear-gradient(
+            45deg,
+            var(--ornament) 0 1px,
+            transparent 1px 20px
+        ),
+        repeating-linear-gradient(
+            -45deg,
+            var(--ornament) 0 1px,
+            transparent 1px 20px
+        );
+    color: var(--ink);
+    font-family: var(--font-body);
 }
 
 button {
@@ -94,4 +103,26 @@ img {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.album__spine {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 3.25rem;
+  flex-shrink: 0;
+  background-color: var(--accent); /* тільки колір, без image */
+  color: var(--accent-contrast);
+  padding: 1.25rem 0;
+}
+
+
+
+.album__spine-title,
+.album__spine-counter {
+  position: relative;
+  z-index: 1;
 }

@@ -166,6 +166,7 @@ function onTouchEnd(e) {
   min-height: var(--section-desktop-h);
   border-bottom: 1px solid var(--line);
   scroll-snap-align: start;
+  
 }
 
 .album__spine {
@@ -206,6 +207,7 @@ function onTouchEnd(e) {
   overflow: hidden;
   background: var(--surface);
   touch-action: pan-y;
+  background: transparent;
 }
 
 .album__photo-wrap {
@@ -295,27 +297,47 @@ function onTouchEnd(e) {
 /* --- Мобільна версія: альбом на весь екран, "корінець" - знизу --- */
 @media (max-width: 720px) {
   .album {
-    flex-direction: column-reverse;
+    flex-direction: column;
     min-height: 100dvh;
     height: 100dvh;
   }
 
   .album__spine {
-    writing-mode: horizontal-tb;
+    writing-mode: horizontal-tb;  /* горизонтально */
     transform: none;
     width: 100%;
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
     padding: 0.85rem 1.1rem;
     gap: 0.5rem;
   }
 
-  .album__photo-wrap img {
+  .album__spine-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .album__photo-wrap img,
+  .album__photo-wrap video {
     max-height: calc(100dvh - 6.5rem);
   }
 
   .album__nav {
-    display: none; /* на мобільному навігація - свайпом */
+    display: flex; /* якщо десь було none — показати */
+    width: 2.25rem;
+    height: 2.25rem;
+    top: auto;
+    bottom: 3.2rem;
+    transform: none;
+  }
+
+  .album__nav--prev { left: 0.75rem; }
+  .album__nav--next { right: 0.75rem; }
+
+  .album__nav:hover:not(:disabled) {
+    transform: scale(1.05); /* бо transform: none на базовому стані */
   }
 }
 </style>
