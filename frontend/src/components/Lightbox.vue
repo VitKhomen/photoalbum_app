@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 
 const props = defineProps({
   album: { type: Object, required: true },
@@ -25,14 +25,57 @@ function prev() {
   if (total.value === 0) return;
   emit("update:index", (props.index - 1 + total.value) % total.value);
 }
+
+// --- слайдшоу ---
+const isPlaying = ref(false);
+let slideshowTimer = null;
+const SLIDESHOW_DELAY = 3500;
+
+function slideshowAdvance() {
+  // на відміну від ручного next() - тут по колу, не зупиняється на останньому фото
+  const nextIndex = (props.index + 1) % total.value;
+  emit("update:index", nextIndex);
+  scheduleSlideshow();
+}
+
+function scheduleSlideshow() {
+  clearTimeout(slideshowTimer);
+  slideshowTimer = setTimeout(slideshowAdvance, SLIDESHOW_DELAY);
+}
+
+function stopSlideshow() {
+  isPlaying.value = false;
+  clearTimeout(slideshowTimer);
+}
+
+function toggleSlideshow() {
+  if (isPlaying.value) {
+    stopSlideshow();
+  } else {
+    isPlaying.value = true;
+    scheduleSlideshow();
+  }
+}
+
+// ручна навігація під час слайдшоу - перезапускаємо таймер, а не зупиняємо
+function nextWithReset() {
+  next();
+  if (isPlaying.value) scheduleSlideshow();
+}
+function prevWithReset() {
+  prev();
+  if (isPlaying.value) scheduleSlideshow();
+}
+
 function close() {
+  stopSlideshow();
   emit("close");
 }
 
 function onKeydown(e) {
   if (e.key === "Escape") close();
-  if (e.key === "ArrowRight") next();
-  if (e.key === "ArrowLeft") prev();
+  if (e.key === "ArrowRight") nextWithReset();
+  if (e.key === "ArrowLeft") prevWithReset();
 }
 
 let touchStartX = 0;
@@ -53,6 +96,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown);
   document.body.style.overflow = "";
+  clearTimeout(slideshowTimer);
 });
 </script>
 
@@ -73,9 +117,22 @@ onBeforeUnmount(() => {
     </button>
 
     <button
+      class="lightbox__play"
+      @click="toggleSlideshow"
+      :aria-label="isPlaying ? 'Зупинити слайдшоу' : 'Запустити слайдшоу'"
+    >
+      <svg v-if="!isPlaying" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
+      </svg>
+    </button>
+
+    <button
       v-if="total > 1"
       class="lightbox__nav lightbox__nav--prev"
-      @click="prev"
+      @click="prevWithReset"
       :disabled="index === 0"
       aria-label="Попереднє фото"
     >
@@ -108,7 +165,7 @@ onBeforeUnmount(() => {
     <button
       v-if="total > 1"
       class="lightbox__nav lightbox__nav--next"
-      @click="next"
+      @click="nextWithReset"
       :disabled="index === total - 1"
       aria-label="Наступне фото"
     >
@@ -188,6 +245,28 @@ onBeforeUnmount(() => {
 }
 .lightbox__close:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.lightbox__play {
+  position: absolute;
+  top: 1.25rem;
+  right: 4.25rem; /* ліворуч від close */
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: #f2f0ea;
+  cursor: pointer;
+}
+.lightbox__play:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 720px) {
+  .lightbox__play { top: max(1rem, env(safe-area-inset-top)); right: 3.75rem; }
 }
 
 .lightbox__nav {

@@ -1,14 +1,54 @@
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 
 const props = defineProps({
   album: { type: Object, required: true },
+  lightboxOpen: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["open-lightbox"]);
 
 const photos = computed(() => props.album.photos || []);
 const total = computed(() => photos.value.length);
+
+const sectionEl = ref(null);
+let observer = null;
+let keydownActive = false;
+
+function handleKeydown(e) {
+  if (props.lightboxOpen) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
+}
+
+function activateKeydown() {
+  if (!keydownActive) {
+    window.addEventListener("keydown", handleKeydown);
+    keydownActive = true;
+  }
+}
+function deactivateKeydown() {
+  if (keydownActive) {
+    window.removeEventListener("keydown", handleKeydown);
+    keydownActive = false;
+  }
+}
+
+onMounted(() => {
+  observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) activateKeydown();
+      else deactivateKeydown();
+    },
+    { threshold: [0, 0.6, 1] }
+  );
+  if (sectionEl.value) observer.observe(sectionEl.value);
+});
+
+onBeforeUnmount(() => {
+  if (observer) observer.disconnect();
+  deactivateKeydown();
+});
 
 function indexOfCover() {
   const coverId = props.album.cover_photo?.id ?? props.album.cover_photo_id;
@@ -79,7 +119,7 @@ function onTouchEnd(e) {
 </script>
 
 <template>
-  <section class="album" :aria-label="`Альбом: ${album.title}`">
+  <section class="album" ref="sectionEl" :aria-label="`Альбом: ${album.title}`">
     <div class="album__spine">
       <span class="album__spine-title">{{ album.title }}</span>
       <span class="album__spine-counter" v-if="total > 0">
@@ -268,6 +308,7 @@ function onTouchEnd(e) {
   right: 1.25rem;
 }
 
+
 .album__dots {
   position: absolute;
   bottom: 0.9rem;
@@ -303,7 +344,7 @@ function onTouchEnd(e) {
   }
 
   .album__spine {
-    writing-mode: horizontal-tb;  /* горизонтально */
+    writing-mode: horizontal-tb;
     transform: none;
     width: 100%;
     flex-direction: row;
@@ -325,19 +366,7 @@ function onTouchEnd(e) {
   }
 
   .album__nav {
-    display: flex; /* якщо десь було none — показати */
-    width: 2.25rem;
-    height: 2.25rem;
-    top: auto;
-    bottom: 3.2rem;
-    transform: none;
-  }
-
-  .album__nav--prev { left: 0.75rem; }
-  .album__nav--next { right: 0.75rem; }
-
-  .album__nav:hover:not(:disabled) {
-    transform: scale(1.05); /* бо transform: none на базовому стані */
+    display: none; /* на мобільному навігація - лише свайпом, як і було */
   }
 }
 </style>
