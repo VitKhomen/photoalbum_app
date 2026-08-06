@@ -72,6 +72,40 @@ function close() {
   emit("close");
 }
 
+function requestFullscreenSafe() {
+  const el = document.documentElement;
+  const request =
+    el.requestFullscreen ||
+    el.webkitRequestFullscreen || // Safari
+    el.mozRequestFullScreen ||    // старий Firefox
+    el.msRequestFullscreen;       // старий Edge/IE
+
+  if (request) {
+    request.call(el).catch(() => {
+      // браузер відмовив (наприклад, немає user-gesture чи не підтримується
+      // на цьому пристрої) - просто лишаємось у звичайному режимі, без помилки
+    });
+  }
+}
+
+function exitFullscreenSafe() {
+  const exit =
+    document.exitFullscreen ||
+    document.webkitExitFullscreen ||
+    document.mozCancelFullScreen ||
+    document.msExitFullscreen;
+
+  const isFullscreen =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement;
+
+  if (exit && isFullscreen) {
+    exit.call(document).catch(() => {});
+  }
+}
+
 function onKeydown(e) {
   if (e.key === "Escape") close();
   if (e.key === "ArrowRight") nextWithReset();
@@ -89,14 +123,32 @@ function onTouchEnd(e) {
   else if (dx >= threshold) prev();
 }
 
+let savedScrollY = 0;
+
 onMounted(() => {
   window.addEventListener("keydown", onKeydown);
+
+  savedScrollY = window.scrollY;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${savedScrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
   document.body.style.overflow = "hidden";
+
+  requestFullscreenSafe();
 });
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown);
-  document.body.style.overflow = "";
   clearTimeout(slideshowTimer);
+
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.overflow = "";
+  window.scrollTo(0, savedScrollY); // повертаємось точно туди, звідки відкрили
+
+  exitFullscreenSafe();
 });
 </script>
 
