@@ -4,6 +4,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 const props = defineProps({
   album: { type: Object, required: true },
   lightboxOpen: { type: Boolean, default: false },
+  returnIndex: { type: Number, default: null },
 });
 
 const emit = defineEmits(["open-lightbox"]);
@@ -58,6 +59,14 @@ function indexOfCover() {
 }
 
 const currentIndex = ref(indexOfCover());
+watch(
+  () => props.returnIndex,
+  (val) => {
+    if (typeof val === "number" && val >= 0 && val < total.value) {
+      currentIndex.value = val;
+    }
+  }
+);
 
 watch(
   () => [props.album.cover_photo?.id, props.album.cover_photo_id, photos.value.length],
@@ -89,33 +98,6 @@ function openLightbox() {
   emit("open-lightbox", { album: props.album, index: currentIndex.value });
 }
 
-// --- свайп на мобільних ---
-let touchStartX = 0;
-let touchStartY = 0;
-let isSwiping = false;
-
-function onTouchStart(e) {
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-  isSwiping = true;
-}
-function onTouchMove(e) {
-  if (!isSwiping) return;
-  const dx = e.touches[0].clientX - touchStartX;
-  const dy = e.touches[0].clientY - touchStartY;
-  // якщо рух переважно горизонтальний - гасимо вертикальний скрол сторінки
-  if (Math.abs(dx) > Math.abs(dy)) {
-    e.preventDefault();
-  }
-}
-function onTouchEnd(e) {
-  if (!isSwiping) return;
-  isSwiping = false;
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  const threshold = 45;
-  if (dx <= -threshold) next();
-  else if (dx >= threshold) prev();
-}
 </script>
 
 <template>
@@ -129,9 +111,6 @@ function onTouchEnd(e) {
 
     <div
       class="album__stage"
-      @touchstart="onTouchStart"
-      @touchmove="onTouchMove"
-      @touchend="onTouchEnd"
     >
       <button
         v-if="total > 1"
@@ -206,6 +185,8 @@ function onTouchEnd(e) {
   min-height: var(--section-desktop-h);
   border-bottom: 1px solid var(--line);
   scroll-snap-align: start;
+  touch-action: pan-y;
+  overflow-x: hidden;
   
 }
 
@@ -221,6 +202,7 @@ function onTouchEnd(e) {
   background: var(--accent);
   color: var(--accent-contrast);
   padding: 1.25rem 0;
+  touch-action: pan-y;
 }
 
 .album__spine-title {
@@ -339,8 +321,12 @@ function onTouchEnd(e) {
 @media (max-width: 720px) {
   .album {
     flex-direction: column;
-    min-height: 100dvh;
-    height: 100dvh;
+    min-height: auto;
+    height: auto;
+    padding-bottom: 2.8rem;
+    padding-top: 0.70rem;
+    touch-action: pan-y;
+    overflow-x: hidden;
   }
 
   .album__spine {
@@ -352,6 +338,7 @@ function onTouchEnd(e) {
     align-items: center;
     padding: 0.85rem 1.1rem;
     gap: 0.5rem;
+    touch-action: pan-y;
   }
 
   .album__spine-title {
@@ -362,11 +349,28 @@ function onTouchEnd(e) {
 
   .album__photo-wrap img,
   .album__photo-wrap video {
-    max-height: calc(100dvh - 6.5rem);
+    max-height: 58dvh;
+  }
+
+  .album__stage {
+    flex: none;           
+    padding: 0.75rem 0 1rem;
   }
 
   .album__nav {
-    display: none; /* на мобільному навігація - лише свайпом, як і було */
+    display: flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    top: auto;
+    bottom: 3.2rem; /* трохи вище крапок-індикаторів */
+    transform: none;
+  }
+  .album__nav--prev { left: 0.75rem; }
+  .album__nav--next { right: 0.75rem; }
+
+  .album__nav:hover:not(:disabled),
+  .album__nav:active:not(:disabled) {
+    transform: scale(1.05);
   }
 }
 </style>

@@ -119,8 +119,8 @@ function onTouchStart(e) {
 function onTouchEnd(e) {
   const dx = e.changedTouches[0].clientX - touchStartX;
   const threshold = 45;
-  if (dx <= -threshold) next();
-  else if (dx >= threshold) prev();
+  if (dx <= -threshold) nextWithReset();
+  else if (dx >= threshold) prevWithReset();
 }
 
 let savedScrollY = 0;
@@ -162,36 +162,6 @@ onBeforeUnmount(() => {
     @touchstart="onTouchStart"
     @touchend="onTouchEnd"
   >
-    <button class="lightbox__close" @click="close" aria-label="Закрити">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </button>
-
-    <button
-      class="lightbox__play"
-      @click="toggleSlideshow"
-      :aria-label="isPlaying ? 'Зупинити слайдшоу' : 'Запустити слайдшоу'"
-    >
-      <svg v-if="!isPlaying" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-        <path d="M8 5v14l11-7z"/>
-      </svg>
-      <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-        <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
-      </svg>
-    </button>
-
-    <button
-      v-if="total > 1"
-      class="lightbox__nav lightbox__nav--prev"
-      @click="prevWithReset"
-      :disabled="index === 0"
-      aria-label="Попереднє фото"
-    >
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
-        <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
 
     <figure class="lightbox__figure" v-if="current">
       <video
@@ -208,23 +178,59 @@ onBeforeUnmount(() => {
         :src="current.url"
         :alt="album.title"
       />
+
       <figcaption class="lightbox__caption">
         <span class="lightbox__title">{{ album.title }}</span>
         <span class="lightbox__counter">{{ pad(index + 1) }} / {{ pad(total) }}</span>
       </figcaption>
+
+      <!-- Кнопки внизу: prev | play + close | next -->
+      <div class="lightbox__controls">
+        <button
+          v-if="total > 1"
+          class="lightbox__nav lightbox__nav--prev"
+          @click="prevWithReset"
+          aria-label="Попереднє фото"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div v-else class="lightbox__nav-spacer"></div>
+
+        <button
+          class="lightbox__play"
+          @click="toggleSlideshow"
+          :aria-label="isPlaying ? 'Зупинити слайдшоу' : 'Запустити слайдшоу'"
+        >
+          <svg v-if="!isPlaying" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
+          </svg>
+        </button>
+
+        <button class="lightbox__close" @click="close" aria-label="Закрити">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <button
+          v-if="total > 1"
+          class="lightbox__nav lightbox__nav--next"
+          @click="nextWithReset"
+          aria-label="Наступне фото"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div v-else class="lightbox__nav-spacer"></div>
+      </div>
     </figure>
 
-    <button
-      v-if="total > 1"
-      class="lightbox__nav lightbox__nav--next"
-      @click="nextWithReset"
-      :disabled="index === total - 1"
-      aria-label="Наступне фото"
-    >
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
-        <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
   </div>
 </template>
 
@@ -254,6 +260,11 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.9rem;
 }
+.lightbox__controls {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
 
 .lightbox__figure img,
 .lightbox__figure video {
@@ -281,28 +292,9 @@ onBeforeUnmount(() => {
   letter-spacing: 0.04em;
 }
 
-.lightbox__close {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  color: #f2f0ea;
-  cursor: pointer;
-}
-.lightbox__close:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
+/* === Кнопки Close і Play — тепер внизу === */
+.lightbox__close,
 .lightbox__play {
-  position: absolute;
-  top: 1.25rem;
-  right: 4.25rem; /* ліворуч від close */
   all: unset;
   display: flex;
   align-items: center;
@@ -312,13 +304,12 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   color: #f2f0ea;
   cursor: pointer;
-}
-.lightbox__play:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35); /* щоб було видно на світлих фото */
 }
 
-@media (max-width: 720px) {
-  .lightbox__play { top: max(1rem, env(safe-area-inset-top)); right: 3.75rem; }
+.lightbox__close:hover,
+.lightbox__play:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .lightbox__nav {
@@ -338,15 +329,25 @@ onBeforeUnmount(() => {
 .lightbox__nav:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
 }
-.lightbox__nav:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
+
 .lightbox__nav--prev { left: 1rem; }
 .lightbox__nav--next { right: 1rem; }
 
 @media (max-width: 720px) {
-  .lightbox__nav { display: none; } /* на мобільному - лише свайп */
-  .lightbox__close { top: max(1rem, env(safe-area-inset-top)); }
+  .lightbox__play {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    right: 3.75rem;
+    top: auto;
+  }
+  .lightbox__close {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    top: auto;
+  }
+
+  .lightbox__nav {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: rgba(0, 0, 0, 0.35);
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "../stores/auth.js";
 import {
@@ -9,6 +9,7 @@ import {
   updateAlbum,
   deleteAlbum,
   uploadPhoto,
+  uploadPhotoWithProgress,
   deletePhoto,
   reorderPhotos,
 } from "../api.js";
@@ -34,6 +35,11 @@ const editDescription = ref("");
 const isSavingEdit = ref(false);
 
 const uploadError = ref(null);
+const uploadProgress = ref(null); // { fileName, fileIndex, totalFiles, percent } | null
+const thumbLoaded = reactive(new Set()); // id фото, чиї мініатюри вже завантажились
+function onThumbLoad(id) {
+  thumbLoaded.add(id);
+}
 const isUploading = ref(false);
 const fileInput = ref(null);
 
@@ -118,17 +124,26 @@ async function handleFileChange(e) {
 
   isUploading.value = true;
   uploadError.value = null;
-
   const failed = [];
 
-  for (const file of files) {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    uploadProgress.value = {
+      fileName: file.name,
+      fileIndex: i + 1,
+      totalFiles: files.length,
+      percent: 0,
+    };
     try {
-      await uploadPhoto(selectedAlbum.value.id, file);
+      await uploadPhotoWithProgress(selectedAlbum.value.id, file, (percent) => {
+        uploadProgress.value = { ...uploadProgress.value, percent };
+      });
     } catch (err) {
       failed.push(`${file.name}: ${err.message}`);
     }
   }
 
+  uploadProgress.value = null;
   await refreshSelected();
   await loadAlbums();
 
@@ -265,6 +280,15 @@ onMounted(loadAlbums);
               />
             </label>
             <p v-if="uploadError" class="error-text">{{ uploadError }}</p>
+            <div v-if="uploadProgress" class="upload-progress">
+              <div class="upload-progress__label">
+                Файл {{ uploadProgress.fileIndex }} з {{ uploadProgress.totalFiles }}:
+                {{ uploadProgress.fileName }} - {{ uploadProgress.percent }}%
+              </div>
+              <div class="upload-progress__bar">
+                <div class="upload-progress__fill" :style="{ width: uploadProgress.percent + '%' }" />
+              </div>
+            </div>
           </div>
 
           <div v-if="selectedAlbum.photos.length === 0" class="muted">
@@ -278,21 +302,26 @@ onMounted(loadAlbums);
               class="photo-card"
               :class="{ 'photo-card--cover': selectedAlbum.cover_photo?.id === photo.id }"
             >
-              <video
-                v-if="photo.media_type === 'video'"
-                :src="photo.url"
-                muted
-                playsinline
-                preload="metadata"
-                class="photo-card__media"
-              />
-              <img
-                v-else
-                :src="photo.url"
-                :alt="selectedAlbum.title"
-                loading="lazy"
-                class="photo-card__media"
-              />
+              <div class="photo-card__media-wrap">
+                <div v-if="!thumbLoaded.has(photo.id)" class="skeleton" />
+                <video
+                  v-if="photo.media_type === 'video'"
+                  :src="photo.url"
+                  muted
+                  playsinline
+                  preload="metadata"
+                  class="photo-card__media"
+                  @loadeddata="onThumbLoad(photo.id)"
+                />
+                <img
+                  v-else
+                  :src="photo.url"
+                  :alt="selectedAlbum.title"
+                  loading="lazy"
+                  class="photo-card__media"
+                  @load="onThumbLoad(photo.id)"
+                />
+              </div>
 
               <div class="photo-card__actions">
                 <button
@@ -529,7 +558,7 @@ onMounted(loadAlbums);
 
 .photo-card__media {
   width: 100%;
-  height: 8rem;
+  height: 100%;
   object-fit: cover;
   display: block;
   background: #111;
@@ -563,5 +592,41 @@ onMounted(loadAlbums);
     border-right: none;
     border-bottom: 1px solid var(--line);
   }
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.upload-progress__label {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.upload-progress__bar {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.upload-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 150ms ease;
+}
+
+.photo-card__media-wrap {
+  position: relative;
+  height: 8rem;
+  overflow: hidden;
+}
+.photo-card__media-wrap .skeleton {
+  position: absolute;
+  inset: 0;
 }
 </style>

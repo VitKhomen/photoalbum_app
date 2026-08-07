@@ -11,6 +11,9 @@ const error = ref(null);
 
 const theme = ref(document.documentElement.getAttribute("data-theme") || "dark");
 
+const lightbox = ref(null); // { album, index } | null
+const lastIndexByAlbum = ref({}); // { [albumId]: index }
+
 function toggleTheme() {
   theme.value = theme.value === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", theme.value);
@@ -18,16 +21,24 @@ function toggleTheme() {
 }
 
 // --- лайтбокс (один на весь застосунок) ---
-const lightbox = ref(null); // { album, index } | null
 
 function openLightbox({ album, index }) {
   lightbox.value = { album, index };
 }
 function closeLightbox() {
+  if (lightbox.value) {
+    const id = lightbox.value.album.id;
+    lastIndexByAlbum.value = {
+      ...lastIndexByAlbum.value,
+      [id]: lightbox.value.index,
+    };
+  }
   lightbox.value = null;
 }
 function updateLightboxIndex(index) {
-  if (lightbox.value) lightbox.value = { ...lightbox.value, index };
+  if (lightbox.value) {
+    lightbox.value = { ...lightbox.value, index };
+  }
 }
 
 async function loadAlbums() {
@@ -72,6 +83,7 @@ onMounted(loadAlbums);
           :key="album.id"
           :album="album"
           :lightbox-open="!!lightbox"
+          :return-index="lastIndexByAlbum[album.id] ?? null"
           @open-lightbox="openLightbox"
         />
       </template>
@@ -88,6 +100,13 @@ onMounted(loadAlbums);
 </template>
 
 <style scoped>
+
+.page {
+  overflow-x: hidden;
+  touch-action: pan-y;
+}
+
+
 .page__header {
   position: fixed;
   top: 0;
@@ -98,9 +117,11 @@ onMounted(loadAlbums);
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1.25rem;
+  padding-top: max(0.9rem, env(safe-area-inset-top));
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
+  touch-action: pan-y;
 }
 
 .page__logo {
@@ -110,8 +131,11 @@ onMounted(loadAlbums);
 }
 
 .page__main {
-  padding-top: 3.6rem; /* під висоту header */
+  padding-top: calc(3.8rem + env(safe-area-inset-top, 0px)); /* під висоту header */
   scroll-snap-type: y proximity;
+  scroll-padding-top: calc(3.8rem + env(safe-area-inset-top, 0px));
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .page__state {

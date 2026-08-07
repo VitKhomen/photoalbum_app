@@ -92,6 +92,40 @@ export function uploadPhoto(albumId, file) {
   });
 }
 
+export function uploadPhotoWithProgress(albumId, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const { token } = useAuth();
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/api/admin/albums/${albumId}/photos`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token.value}`);
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(xhr.responseText ? JSON.parse(xhr.responseText) : null);
+      } else {
+        let detail = `Помилка запиту: ${xhr.status}`;
+        try {
+          detail = JSON.parse(xhr.responseText).detail || detail;
+        } catch {
+          /* тіло не JSON - лишаємо дефолтний текст помилки */
+        }
+        reject(new Error(detail));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Мережева помилка під час завантаження"));
+
+    const formData = new FormData();
+    formData.append("file", file);
+    xhr.send(formData);
+  });
+}
+
 /** Видалити фото. */
 export function deletePhoto(photoId) {
   return adminRequest(`/api/admin/photos/${photoId}`, { method: "DELETE" });
