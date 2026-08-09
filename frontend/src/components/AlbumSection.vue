@@ -35,6 +35,18 @@ function deactivateKeydown() {
   }
 }
 
+
+// скрол бар
+const progressEl = ref(null);
+
+function seekTo(e) {
+  if (total.value === 0 || !progressEl.value) return;
+  const rect = progressEl.value.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  const index = Math.min(total.value - 1, Math.max(0, Math.floor(ratio * total.value)));
+  goto(index);
+}
+
 onMounted(() => {
   observer = new IntersectionObserver(
     ([entry]) => {
@@ -165,15 +177,18 @@ function openLightbox() {
       </button>
     </div>
 
-    <div class="album__dots" v-if="total > 1">
-      <button
-        v-for="(p, i) in photos"
-        :key="p.id"
-        class="album__dot"
-        :class="{ 'album__dot--active': i === currentIndex }"
-        @click="goto(i)"
-        :aria-label="`Перейти до фото ${i + 1}`"
-      />
+    <div
+      class="album__progress"
+      v-if="total > 1"
+      ref="progressEl"
+      @click="seekTo"
+    >
+      <div class="album__progress-track">
+        <div
+          class="album__progress-fill"
+          :style="{ width: ((currentIndex + 1) / total) * 100 + '%' }"
+        />
+      </div>
     </div>
   </section>
 </template>
@@ -291,30 +306,29 @@ function openLightbox() {
 }
 
 
-.album__dots {
+.album__progress {
   position: absolute;
-  bottom: 0.9rem;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 14px; /* більша зона для кліку/тапу, ніж сама лінія */
   display: flex;
-  gap: 0.4rem;
+  align-items: flex-end;
+  cursor: pointer;
   z-index: 2;
 }
 
-.album__dot {
-  all: unset;
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-  background: var(--ink-soft);
-  opacity: 0.4;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+.album__progress-track {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
 }
 
-.album__dot--active {
-  opacity: 1;
+.album__progress-fill {
+  height: 100%;
   background: var(--accent);
-  transform: scale(1.3);
+  transition: width var(--transition-fast);
 }
 
 /* --- Мобільна версія: альбом на весь екран, "корінець" - знизу --- */
