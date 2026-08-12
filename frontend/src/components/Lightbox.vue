@@ -56,6 +56,40 @@ function toggleSlideshow() {
     scheduleSlideshow();
   }
 }
+// завантаження
+const isDownloading = ref(false);
+
+function filenameFor(photo) {
+  try {
+    const url = new URL(photo.url);
+    const parts = url.pathname.split("/");
+    return parts[parts.length - 1] || `photo-${photo.id}`;
+  } catch {
+    return `photo-${photo.id}`;
+  }
+}
+
+async function downloadCurrent() {
+  if (!current.value || isDownloading.value) return;
+  isDownloading.value = true;
+  try {
+    const res = await fetch(current.value.url, { cache: "reload" }); 
+    if (!res.ok) throw new Error("fetch failed");
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filenameFor(current.value);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(current.value.url, "_blank", "noopener");
+  } finally {
+    isDownloading.value = false;
+  }
+}
 
 // ручна навігація під час слайдшоу - перезапускаємо таймер, а не зупиняємо
 function nextWithReset() {
@@ -211,6 +245,17 @@ onBeforeUnmount(() => {
           </svg>
         </button>
 
+        <button
+          class="lightbox__download"
+          @click="downloadCurrent"
+          :disabled="isDownloading"
+          aria-label="Завантажити оригінал"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+            <path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
         <button class="lightbox__close" @click="close" aria-label="Закрити">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -294,7 +339,8 @@ onBeforeUnmount(() => {
 
 /* === Кнопки Close і Play — тепер внизу === */
 .lightbox__close,
-.lightbox__play {
+.lightbox__play,
+.lightbox__download {
   all: unset;
   display: flex;
   align-items: center;
@@ -304,7 +350,18 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   color: #f2f0ea;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.35); /* щоб було видно на світлих фото */
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.lightbox__close:hover,
+.lightbox__play:hover,
+.lightbox__download:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.lightbox__download:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .lightbox__close:hover,
